@@ -1,0 +1,38 @@
+{
+  "dependencies": {
+    "@headlessui/react": "^2.2.4",
+    "@heroicons/react": "^2.2.0",
+    "@radix-ui/react-dialog": "^1.1.14",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@types/bcryptjs": "^2.4.6",
+    "autoprefixer": "^10.4.16",
+    "bcryptjs": "^3.0.2",
+    "class-variance-authority": "^0.7.1",
+    "date-fns": "^4.1.0",
+    "jose": "^6.0.11",
+    "lucide-react": "^0.513.0",
+    "next": "^14.2.3",
+    "postcss": "^8.4.38",
+    "tailwind-merge": "^3.3.0",
+    "tailwindcss": "^3.4.3"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss && node server.js",
+    "lint": "next lint",
+    "build:production": "npm run lint && prisma generate && next build",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "migrate-to-prisma": "node scripts/migrate-to-prisma.js",
+    "hash-password": "node scripts/hash-password.js"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.30",
+    "@types/react": "19.1.6",
+    "typescript": "5.8.3",
+    "@prisma/client": "^5.10.0",
+    "prisma": "^5.10.0"
+  }
+}

@@ -1,0 +1,99 @@
+# Multi-stage build for CapRover
+FROM node:18-alpine AS base
+RUN apk add --no-cache libc6-compat openssl
+
+# Dependencies stage
+FROM base AS deps
+WORKDIR /app
+COPY frontend/package.json frontend/package-lock.json ./
+# Install dependencies without scripts first
+RUN npm ci --ignore-scripts
+
+# Build stage  
+FROM base AS builder
+WORKDIR /app
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source files (excluding prisma for now)
+COPY frontend/package.json frontend/package-lock.json ./
+COPY frontend/next.config.js ./
+COPY frontend/next.config.ts ./
+COPY frontend/tailwind.config.ts ./
+COPY frontend/postcss.config.js ./
+COPY frontend/postcss.config.mjs ./
+COPY frontend/tsconfig.json ./
+COPY frontend/src ./src
+COPY frontend/public ./public
+
+# Copy Prisma schema and migration script
+COPY frontend/prisma ./prisma
+COPY frontend/migrate-and-start.sh ./migrate-and-start.sh
+
+# Set environment for build
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+ENV SKIP_ENV_VALIDATION=1
+
+# Generate Prisma client before build
+RUN npx prisma generate
+
+# Build the application
+RUN npx next build
+
+# Production stage
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Create user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy built application
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# CRITICAL: Copy public directory for static file serving
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Copy Prisma files and migration script from builder
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/migrate-and-start.sh ./migrate-and-start.sh
+
+# Copy node_modules for runtime Prisma generation
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Create uploads directory with proper permissions
+# This will be mounted as a volume in CapRover
+RUN mkdir -p ./public/uploads
+RUN chown -R nextjs:nodejs ./public/uploads
+RUN chmod 755 ./public/uploads
+
+# Create data directory for JSON files with proper permissions
+RUN mkdir -p ./data
+RUN chown -R nextjs:nodejs ./data
+RUN chmod 755 ./data
+
+# Make script executable and verify it exists
+RUN chmod +x ./migrate-and-start.sh
+RUN ls -la ./migrate-and-start.sh
+
+# Create volume mount point for persistent uploads
+VOLUME ["/app/public/uploads"]
+
+USER nextjs
+
+EXPOSE 3000
+
+# Health check - Geçici olarak devre dışı
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+#   CMD node -e "const http = require('http'); const req = http.request('http://localhost:3000/api/health', res => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.end();"
+
+# Use npm start instead of direct node command
+CMD ["npm", "start"] 

@@ -1,0 +1,251 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Kullanıcılar
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(USER)
+  firstName    String?
+  lastName     String?
+  phone        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  listings     Listing[] // İlanlar
+}
+
+// İlanlar - Mevcut API ile uyumlu
+model Listing {
+  id String @id @default(cuid())
+
+  // Genel Ortak Alanlar
+  title       String
+  description String?
+  price       String?
+  type        PropertyType // Satılık Daire, Kiralık Daire, etc.
+  status      ListingStatus @default(ACTIVE)
+
+  // Lokasyon bilgileri
+  city         String?
+  district     String?
+  neighborhood String?
+
+  // Alan bilgileri
+  grossArea String?
+  netArea   String?
+
+  // Genel özellikler
+  creditEligible String? // Evet, Hayır, Bilinmiyor
+  deedType       String? // Müstakil, Hisseli, Tahsis, Diğer
+  listingSource  String? // Sahibinden, Emlak Ofisinden
+  swapOption     String? // Evet, Hayır
+  listingDate    DateTime?
+  order          Int? // Sıralama
+
+  // Daire özellikler (JSON olarak saklanacak)
+  roomType      String? // 1+0, 1+1, 2+1, etc.
+  buildingAge   String? // 0, 1-5, 5-10, etc.
+  floor         String?
+  totalFloors   String?
+  heatingType   String? // Merkezi, Kombi, etc.
+  bathroomCount String?
+  kitchenType   String? // Açık, Kapalı
+  parkingType   String? // Açık, Kapalı, Yok
+  usageStatus   String? // Boş, Kiracılı, Mal Sahibi
+  hasBalcony    Boolean?
+  hasElevator   Boolean?
+  isFurnished   Boolean?
+  isInComplex   Boolean?
+  complexName   String?
+  dues          String?
+  deposit       String?
+
+  // Arsa/Tarla özellikleri
+  zoningType     String? // Konut, Ticari, Tarla, Arsa, Diğer
+  blockNumber    String? // Ada No
+  parcelNumber   String? // Parsel No
+  mapNumber      String? // Pafta No
+  floorAreaRatio String? // Kaks (Emsal)
+  heightLimit    String? // Gabari
+  topography     String? // Topografya (Tarla için)
+  irrigation     String? // Sulama (Tarla için)
+  roadStatus     String? // Yol Durumu (Tarla için)
+
+  // İş Yeri özellikleri
+  businessType  String? // Ofis, Dükkan, İmalathane, Depo, Diğer
+  roomCount     String? // Oda/Bölüm Sayısı
+  floorCount    String? // Kat Sayısı
+  elevatorCount String? // Asansör Sayısı
+  hasTenant     Boolean? // Kiracılı
+  condition     String? // İlk Sahip, İkinci El
+
+  // Görseller (JSON array olarak)
+  images Json? // String array
+
+  // Admin bilgileri
+  agentId String?
+  agent   User?   @relation(fields: [agentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  adminNotes AdminNote[]
+}
+
+// Lokasyonlar
+model Location {
+  id           String   @id @default(cuid())
+  city         String
+  district     String
+  neighborhood String?
+  address      String?
+  latitude     Float?
+  longitude    Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// İlan Görselleri (Ayrıca JSON'da da tutuyoruz)
+model Image {
+  id        String   @id @default(cuid())
+  url       String
+  listingId String
+  isMain    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// İlan Özellikleri
+model Feature {
+  id        String   @id @default(cuid())
+  name      String
+  value     String?
+  listingId String
+  createdAt DateTime @default(now())
+}
+
+// Referanslar
+model Reference {
+  id          String   @id @default(cuid())
+  companyName String
+  description String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Ekip Üyeleri
+model TeamMember {
+  id          Int      @id @default(autoincrement())
+  name        String
+  title       String
+  description String
+  photoUrl    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// İletişim Mesajları
+model ContactMessage {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  status    MessageStatus @default(NEW)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+// Career Applications
+model CareerApplication {
+  id        Int      @id @default(autoincrement())
+  firstName String
+  lastName  String
+  email     String
+  phone     String
+  address   String
+  gender    String
+  cvUrl     String? // CV dosyasının URL'i
+  status    String   @default("Beklemede") // Beklemede, İncelendi, Reddedildi, Kabul Edildi
+  notes     String? // Admin notları
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Admin Notları - İlanlarla ilgili admin notları
+model AdminNote {
+  id        String   @id @default(cuid())
+  listingId String // Hangi ilanla ilgili
+  title     String // Not başlığı
+  content   String // Not içeriği
+  noteType  NoteType @default(GENERAL) // Not türü
+  priority  Priority @default(MEDIUM) // Öncelik seviyesi
+  isPrivate Boolean  @default(false) // Sadece admin görsün mü?
+  createdBy String // Hangi admin oluşturdu
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+// Enum'lar - Mevcut API ile uyumlu
+enum Role {
+  ADMIN
+  AGENT
+  USER
+}
+
+enum PropertyType {
+  SATILIK_DAIRE // Satılık Daire
+  KIRALIK_DAIRE // Kiralık Daire
+  SATILIK_ARSA // Satılık Arsa
+  TARLA // Tarla
+  SATILIK_IS_YERI // Satılık İş Yeri
+  KIRALIK_IS_YERI // Kiralık İş Yeri
+}
+
+enum ListingStatus {
+  ACTIVE // Aktif
+  PASSIVE // Pasif
+  SOLD // Satıldı
+  RENTED // Kiralandı
+}
+
+enum MessageStatus {
+  NEW
+  READ
+  REPLIED
+  ARCHIVED
+}
+
+enum NoteType {
+  GENERAL // Genel not
+  VIEWING // Görüntüleme notu
+  NEGOTIATION // Pazarlık notu
+  DOCUMENT // Belge notu
+  REMINDER // Hatırlatma
+  IMPORTANT // Önemli bilgi
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}

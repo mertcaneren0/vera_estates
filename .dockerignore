@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+frontend/node_modules
+backend/node_modules
+npm-debug.log*
+
+# Build outputs
+frontend/.next
+frontend/dist
+backend/dist
+.next
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Development files
+.git
+.gitignore
+README.md
+docs/
+
+# Deployment files - Keep only unnecessary ones
+deployment.tar.gz
+Dockerfile.complete
+
+# Logs
+*.log
+logs/
+
+# Runtime
+.DS_Store
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db 
